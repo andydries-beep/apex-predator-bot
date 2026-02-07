@@ -8,6 +8,7 @@ Features:
 - Hourly catalyst detection
 - Regime monitoring every 6 hours
 - Position monitoring every 6 hours
+- HTTP health check endpoint for hosting platforms
 
 Author: Manus AI
 Date: January 30, 2026
@@ -15,7 +16,9 @@ Date: January 30, 2026
 
 import schedule
 import time
+import threading
 from datetime import datetime
+from http.server import HTTPServer, BaseHTTPRequestHandler
 import sys
 import os
 
@@ -24,6 +27,29 @@ sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
 from automated_scanner import AutomatedScanner
 from catalyst_detector import CatalystDetector
+
+
+class HealthCheckHandler(BaseHTTPRequestHandler):
+    """Simple HTTP handler for health checks (keeps Koyeb happy)"""
+
+    def do_GET(self):
+        self.send_response(200)
+        self.send_header('Content-type', 'text/plain')
+        self.end_headers()
+        uptime = datetime.now().strftime('%Y-%m-%d %H:%M:%S AWST')
+        self.wfile.write(f"Apex Predator Trading Bot - ONLINE\nTime: {uptime}\n".encode())
+
+    def log_message(self, format, *args):
+        # Suppress default HTTP logging to keep bot log clean
+        pass
+
+
+def start_health_server():
+    """Start a simple HTTP server for health checks on port 8000"""
+    port = int(os.environ.get("PORT", 8000))
+    server = HTTPServer(('0.0.0.0', port), HealthCheckHandler)
+    print(f"Health check server running on port {port}")
+    server.serve_forever()
 
 
 class TradingBot:
@@ -126,6 +152,10 @@ class TradingBot:
 
     def run(self):
         """Start the bot with scheduled tasks"""
+        # Start health check server in background thread
+        health_thread = threading.Thread(target=start_health_server, daemon=True)
+        health_thread.start()
+
         # Schedule daily market scan at 8:00 AM AWST
         schedule.every().day.at("08:00").do(self.daily_market_scan)
 
