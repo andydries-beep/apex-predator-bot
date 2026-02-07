@@ -1,0 +1,8 @@
+__pycache__/
+*.pyc
+bot.log
+bot.pid
+scans/
+catalysts/
+learning_journal/
+reports/
